@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "ask-schema"
+
 module Ask
   # Base class for defining tools that LLMs can call.
   #
@@ -38,6 +40,7 @@ module Ask
         @parameters = {} if @parameters.nil?
         subclass.instance_variable_set(:@description, nil)
         subclass.instance_variable_set(:@parameters, {})
+        subclass.instance_variable_set(:@params_schema_definition, nil)
       end
 
       # Set or retrieve the tool's human-readable description.
@@ -70,6 +73,24 @@ module Ask
         )
       end
 
+      # Define tool parameters using the {Ask::Schema} DSL.
+      #
+      # When a block is provided, it takes precedence over individual
+      # +param+ declarations for schema generation.
+      #
+      # @example
+      #   params do
+      #     string :location, description: "City name"
+      #     string :unit, enum: %w[celsius fahrenheit]
+      #   end
+      #
+      # @param schema [Ask::Schema, Class<Ask::Schema>, Hash, nil] A pre-built schema
+      # @param block [Proc] DSL block evaluated by Ask::Schema
+      # @return [void]
+      def params(schema = nil, &block)
+        @params_schema_definition = schema || block
+      end
+
       # @api private
       # @return [Hash{Symbol => Ask::Tool::Parameter}]
       def parameters
@@ -87,7 +108,6 @@ module Ask
     #
     # @return [String]
     def name
-      # Use only the class name (last segment), ignoring module nesting
       klass_name = self.class.name.to_s.split("::").last || self.class.name.to_s
       normalized = klass_name.dup.force_encoding("UTF-8").unicode_normalize(:nfkd)
       normalized.encode("ASCII", replace: "")
@@ -138,29 +158,20 @@ module Ask
     # Generate a JSON Schema hash describing this tool's parameters.
     # Suitable for LLM function-calling APIs (OpenAI, Anthropic, etc.).
     #
-    # @return [Hash]
+    # When a +params+ block was provided, uses {Ask::Schema} to generate
+    # the schema. Otherwise, auto-generates from +param+ declarations.
+    #
+    # @return [Hash, nil]
     def params_schema
       return @params_schema if defined?(@params_schema)
 
       @params_schema = begin
-        if parameters.empty?
-          nil
+        if params_schema_definition
+          deep_stringify_keys(resolve_params_schema(params_schema_definition))
+        elsif parameters.any?
+          build_schema_from_params
         else
-          properties = parameters.to_h do |_name, param|
-            schema = { type: param.type }
-            schema[:description] = param.description if param.description
-            schema[:items] = { type: "string" } if param.type == "array"
-            [param.name.to_s, schema]
-          end
-
-          required = parameters.select { |_, p| p.required }.keys.map(&:to_s)
-
-          {
-            type: "object",
-            properties: properties,
-            required: required,
-            additionalProperties: false
-          }
+          nil
         end
       end
     end
@@ -184,13 +195,64 @@ module Ask
 
     private
 
+    # @return [Object, nil] stored params schema definition from the class
+    def params_schema_definition
+      self.class.instance_variable_get(:@params_schema_definition)
+    end
+
+    # Resolve a params schema definition into a JSON Schema hash.
+    # Supports Proc (DSL block), Hash (raw JSON Schema), or anything
+    # responding to +to_json_schema+ (Ask::Schema instances/classes).
+    def resolve_params_schema(definition)
+      case definition
+      when Proc
+        schema_class = Ask::Schema.create(&definition)
+        schema_class.new.to_json_schema.dig(:schema)
+      when Hash
+        definition
+      when ->(d) { d.respond_to?(:to_json_schema) }
+        definition.to_json_schema.dig(:schema)
+      else
+        nil
+      end
+    end
+
+    # Build a JSON Schema hash from +param+ declarations.
+    def build_schema_from_params
+      properties = parameters.to_h do |_name, param|
+        schema = { type: param.type }
+        schema[:description] = param.description if param.description
+        schema[:items] = { type: "string" } if param.type == "array"
+        [param.name.to_s, schema]
+      end
+
+      required = parameters.select { |_, p| p.required }.keys.map(&:to_s)
+
+      {
+        type: "object",
+        properties: properties,
+        required: required,
+        additionalProperties: false
+      }
+    end
+
+    # Recursively convert symbol keys to string keys in hashes.
+    def deep_stringify_keys(obj)
+      case obj
+      when Hash then obj.each_with_object({}) { |(k, v), h| h[k.to_s] = deep_stringify_keys(v) }
+      when Array then obj.map { |v| deep_stringify_keys(v) }
+      else obj
+      end
+    end
+
     def normalize_args(args)
       return {} if args.nil?
 
       args.respond_to?(:transform_keys) ? args.transform_keys(&:to_sym) : {}
     end
-
     def validate(normalized)
+      return nil if params_schema_definition
+
       missing = self.class.parameters.select { |_, p| p.required && !normalized.key?(p.name) }
       return "missing required parameters: #{missing.keys.map(&:inspect).join(', ')}" unless missing.empty?
 
