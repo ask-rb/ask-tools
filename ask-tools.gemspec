@@ -4,7 +4,7 @@ Gem::Specification.new do |spec|
   spec.name = "ask-tools"
   spec.version = Ask::VERSION
   spec.authors = ["Kaka Ruto"]
-  spec.email = ["kaka@anywaye.com"]
+  spec.email = ["kaka@myrrlabs.com"]
 
   spec.summary = "Tool framework for the ask-rb ecosystem"
   spec.description = "Defines Ask::Tool (base class), Ask::Result, and tool discovery. Zero dependencies."
