@@ -2,7 +2,7 @@ require_relative "lib/ask/version"
 
 Gem::Specification.new do |spec|
   spec.name = "ask-tools"
-  spec.version = Ask::VERSION
+  spec.version = Ask::Tools::VERSION
   spec.authors = ["Kaka Ruto"]
   spec.email = ["kaka@myrrlabs.com"]
 

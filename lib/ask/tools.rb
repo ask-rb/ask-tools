@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "monitor"
+require_relative "tools/tool"
 
 module Ask
   # Tool registry and discovery.
