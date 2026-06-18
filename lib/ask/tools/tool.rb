@@ -48,6 +48,49 @@ module Ask
         @provider_params ||= {}
       end
 
+      def params_schema
+        @params_schema ||= begin
+          if @params_schema_definition
+            deep_stringify_keys(resolve_params_schema(@params_schema_definition))
+          elsif @parameters && @parameters.any?
+            build_schema_from_params
+          else
+            nil
+          end
+        end
+      end
+
+      def build_schema_from_params
+        properties = parameters.to_h do |_name, param|
+          schema = { type: param.type }
+          schema[:description] = param.description if param.description
+          schema[:items] = { type: "string" } if param.type == "array"
+          [param.name.to_s, schema]
+        end
+        required = parameters.select { |_, p| p.required }.keys.map(&:to_s)
+        { type: "object", properties: properties, required: required, additionalProperties: false }
+      end
+
+      def resolve_params_schema(definition)
+        case definition
+        when Proc
+          schema_class = Ask::Schema.create(&definition)
+          schema_class.new.to_json_schema.dig(:schema)
+        when Hash then definition
+        when ->(d) { d.respond_to?(:to_json_schema) }
+          definition.to_json_schema.dig(:schema)
+        else nil
+        end
+      end
+
+      def deep_stringify_keys(obj)
+        case obj
+        when Hash then obj.each_with_object({}) { |(k, v), h| h[k.to_s] = deep_stringify_keys(v) }
+        when Array then obj.map { |v| deep_stringify_keys(v) }
+        else obj
+        end
+      end
+
       private
 
       def validate_param_type!(type, name)
