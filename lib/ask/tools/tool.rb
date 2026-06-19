@@ -132,10 +132,11 @@ module Ask
       self.class.parameters
     end
 
-    def call(args = {})
+      def call(args = {}, abort_controller = nil)
       normalized = normalize_args(args)
       validation = validate(normalized)
       return Ask::Result.failure(validation) if validation
+      normalized[:_abort_controller] = abort_controller if abort_controller
       execute(**normalized)
     rescue Halt => e
       Ask::Result.ok(data: e.content, metadata: { halted: true })
@@ -143,7 +144,7 @@ module Ask
       Ask::Result.failure("#{self.class.name.split('::').last} raised #{e.class}: #{e.message}")
     end
 
-    def execute(**)
+      def execute(**args)
       raise NotImplementedError, "#{self.class} must implement #execute(**args)"
     end
 
