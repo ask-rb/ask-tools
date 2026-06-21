@@ -114,7 +114,7 @@ module Ask
     end
 
     def name
-      klass_name = self.class.name.to_s || ""
+      klass_name = self.class.name.to_s.split("::").last || ""
       normalized = klass_name.dup.force_encoding("UTF-8").unicode_normalize(:nfkd)
       normalized.encode("ASCII", replace: "")
                 .gsub(/[^a-zA-Z0-9_-]/, "-")
@@ -138,15 +138,15 @@ module Ask
       return Ask::Result.failure(validation) if validation
       normalized[:_abort_controller] = abort_controller if abort_controller
       execute(**normalized)
-    rescue Halt => e
-      Ask::Result.ok(data: e.content, metadata: { halted: true })
-    rescue StandardError => e
-      Ask::Result.failure("#{self.class.name.split('::').last} raised #{e.class}: #{e.message}")
-    end
+      rescue Halt => e
+        Ask::Result.ok(data: e.content, metadata: { halted: true })
+      rescue StandardError => e
+        Ask::Result.failure("#{self.class.name.split('::').last} raised #{e.class}: #{e.message}")
+      end
 
       def execute(**args)
-      raise NotImplementedError, "#{self.class} must implement #execute(**args)"
-    end
+        raise NotImplementedError, "#{self.class} must implement #execute(**args)"
+      end
 
     def params_schema
       return @params_schema if defined?(@params_schema)

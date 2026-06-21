@@ -40,6 +40,15 @@ module Ask
       new(ok: true, output: data, error: nil, metadata: metadata)
     end
 
+    # Create a failed result (positional message form, used by Tool#call).
+    #
+    # @param message [String] description of the failure
+    # @param metadata [Hash] optional metadata
+    # @return [Ask::Result]
+    def self.failure(message, metadata: {})
+      new(ok: false, output: nil, error: message, metadata: metadata)
+    end
+
     # Create a failed result.
     #
     # @param message [String] description of the failure
