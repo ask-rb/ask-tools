@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "ask-schema", path: "../ask-schema"
+gem "ask-schema", "~> 0.1"
 
 group :test do
   gem "minitest", "~> 5.25"

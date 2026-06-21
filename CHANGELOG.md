@@ -1,3 +1,10 @@
+## [0.2.0] - 2026-06-21
+
+### Added
+
+- Gemspec metadata for Rubygems discovery
+- CHANGELOG.md included in gem files list
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
