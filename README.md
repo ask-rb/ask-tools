@@ -1,6 +1,6 @@
 # ask-tools
 
-The foundational gem for the ask-rb ecosystem. Defines `Ask::Tool` — the base class every tool inherits from — along with `Ask::Result` (standardized return value), tool discovery/registration, and a scaffold generator. **Zero external dependencies.**
+The foundational gem for the ask-rb ecosystem. Defines `Ask::Tool` — the base class every tool inherits from — along with `Ask::Result` (standardized return value), tool discovery/registration, and a scaffold generator.
 
 This gem does **not** ship any executable tools. It only provides the contract that tool gems (e.g., `ask-tools-shell`, `ask-tools-filesystem`) implement.
 

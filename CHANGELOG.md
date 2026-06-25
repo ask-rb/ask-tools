@@ -1,3 +1,26 @@
+## [0.2.4] - 2026-06-25
+
+### Changed
+- Testing infrastructure: rubocop, overcommit, bin/setup, gemspec validation, SimpleCov, CI matrix, .minitest config
+## [0.2.3] - 2026-06-24
+
+### Added
+
+- `Ask::Result#error?` predicate — symmetrical counterpart to `ok?`
+- `Ask::Result#error_message` alias for `error`
+
+### Tests
+
+- Added 5 tests for `error?` and `error_message` on `Ask::Result`
+
+## [0.2.2] - 2026-06-23
+
+### Fixed
+
+- Added `ask-schema` as a runtime dependency in gemspec. The `tool.rb` already
+  required `ask-schema` but it wasn't declared, causing `LoadError` for consumers
+  installing from Rubygems without local path resolution.
+
 ## [0.2.0] - 2026-06-21
 
 ### Added
@@ -21,7 +44,6 @@ All notable changes to this project will be documented in this file.
 - `Ask::Tool::Halt` for stopping conversation loops
 - `Ask::Tool::Parameter` value object for parameter metadata
 - Comprehensive test suite with 54+ tests using Minitest and Mocha
-- Zero runtime dependencies — stdlib only
 
 ## [0.1.3] - 2026-06-18
 

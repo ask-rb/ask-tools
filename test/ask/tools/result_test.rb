@@ -84,5 +84,26 @@ module Ask
       result = Ask::Result.error(message: "x", metadata: { code: 500 })
       assert_equal({ code: 500 }, result.metadata)
     end
+
+    def test_error_predicate_returns_true_for_error
+      result = Ask::Result.error(message: "fail")
+      assert_predicate result, :error?
+    end
+
+    def test_error_predicate_returns_false_for_success
+      result = Ask::Result.ok(data: "ok")
+      refute_predicate result, :error?
+    end
+
+    def test_error_message_alias
+      result = Ask::Result.error(message: "something broke")
+      assert_equal "something broke", result.error
+      assert_equal "something broke", result.error_message
+    end
+
+    def test_error_message_is_nil_for_success
+      result = Ask::Result.ok(data: "ok")
+      assert_nil result.error_message
+    end
   end
 end

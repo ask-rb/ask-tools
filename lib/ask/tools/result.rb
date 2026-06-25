@@ -24,6 +24,14 @@ module Ask
 
     alias ok? ok
 
+    # @return [Boolean] whether the tool failed
+    def error?
+      !ok
+    end
+
+    # @return [String, nil] the error message (alias for +error+)
+    alias error_message error
+
     def initialize(ok:, output: nil, error: nil, metadata: {})
       @ok = ok
       @output = output
