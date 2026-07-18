@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require "ask-schema"
 
 module Ask
@@ -137,7 +138,8 @@ module Ask
       validation = validate(normalized)
       return Ask::Result.failure(validation) if validation
       normalized[:_abort_controller] = abort_controller if abort_controller
-      execute(**normalized)
+      execute_kwargs = normalized.reject { |k, _| k == :_abort_controller || k == :abort_controller }
+      execute(**execute_kwargs)
       rescue Halt => e
         Ask::Result.ok(data: e.content, metadata: { halted: true })
       rescue StandardError => e
@@ -210,6 +212,13 @@ module Ask
 
     def normalize_args(args)
       return {} if args.nil?
+      return {} if args.respond_to?(:empty?) && args.empty?
+
+      # Parse JSON strings sent by LLMs (tool call arguments arrive as JSON)
+      if args.is_a?(String)
+        args = JSON.parse(args) rescue (return {})
+      end
+
       args.respond_to?(:transform_keys) ? args.transform_keys(&:to_sym) : {}
     end
 

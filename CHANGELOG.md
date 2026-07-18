@@ -1,3 +1,15 @@
+## [0.2.6] — 2026-07-18
+
+### Fixed
+
+- **`Tool#call` filters `_abort_controller` before passing to `execute`** — The internal `_abort_controller` key was being passed as a keyword argument to tool `execute` methods. Tools with explicit keyword arguments (e.g., `def execute(title:, extraction_scope:)`) crashed with `ArgumentError: unknown keyword` because they didn't accept `_abort_controller`. Now filtered before the `execute(**kwargs)` call.
+
+## [0.2.5] — 2026-07-18
+
+### Fixed
+
+- **`Tool#normalize_args` parses JSON string arguments from LLMs** — Tool call arguments arrive as JSON strings from the LLM, but `normalize_args` only handled Hash arguments. JSON strings were silently ignored, returning an empty args hash and causing "missing required parameters" errors. Now parses JSON strings before normalizing keys to symbols.
+
 ## [0.2.4] - 2026-06-25
 
 ### Changed
