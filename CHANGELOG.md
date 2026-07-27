@@ -1,3 +1,49 @@
+## [0.4.0] — 2026-07-26
+
+### Added
+
+- **`name` class DSL for custom tool names** — tools can now declare a
+  custom name with `name "my_tool"` at the class level instead of
+  overriding `def name`. The class method safely shadows `Module#name`
+  by detecting arguments: `ClassName.name` returns the Ruby class path,
+  `name "foo"` sets the tool name. Instance `#name` returns the custom
+  name if set, otherwise auto-derives from the class name.
+
+### Removed
+
+- **`Ask::Tools::SubAgent`** — removed in favor of `Ask::Agent::SubAgent`
+  in ask-agent v0.18.0. Sub-agent delegation now lives in the agent
+  runtime where it can automatically build sessions.
+
+## [0.3.0] — 2026-07-26
+
+### Added
+
+- **`Ask::Tools::SubAgent` — delegate tasks to a specialized sub-agent tool**.
+  An `Ask::Tool` subclass that wraps a runner callable. When the LLM calls it,
+  the sub-agent runs independently with its own model, tools, and instructions.
+
+  The tool supports per-instance `name:` and `description:` overrides so that
+  multiple sub-agents can coexist in the same tool list with distinct identities.
+
+  ```ruby
+  search = Ask::Tools::SubAgent.new(
+    name: "web_search",
+    description: "Search the web for current information",
+    runner: ->(task) {
+      Ask::Agent::Session.new(model: "gpt-4o-mini", tools: [Search])
+        .run(task).to_s
+    }
+  )
+  ```
+
+### Fixed
+
+- **Tool discovery no longer breaks on tools with required constructor args**.
+  `Ask::Tools::SubAgent` makes its `runner:` parameter optional so that tool
+  discovery (which instantiates via `klass.new`) works without error. An
+  unconfigured SubAgent returns a clear error message at call time.
+
 ## [0.2.6] — 2026-07-18
 
 ### Fixed

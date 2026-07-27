@@ -100,6 +100,33 @@ module Ask
       assert_equal "empty", EmptyTool.new.name
     end
 
+    def test_custom_name_via_class_dsl
+      tool_class = Class.new(Ask::Tool) do
+        name "my_custom_name"
+        description "Custom named tool"
+
+        def execute
+          Ask::Result.ok(data: "done")
+        end
+      end
+
+      assert_equal "my_custom_name", tool_class.new.name
+    end
+
+    def test_class_name_still_accessible
+      assert_equal "Ask::ToolTest::SimpleGreeter", SimpleGreeter.name
+    end
+
+    def test_custom_name_preserves_class_name
+      # A named class with a custom tool name should still report
+      # its Ruby class path via Module#name when called with no args.
+      assert_equal "Ask::ToolTest::InlineTool", InlineTool.name
+    end
+
+    def test_name_defaults_to_auto_derivation
+      assert_equal "halt", HaltTool.new.name
+    end
+
     # --- DSL tests ---
 
     def test_description

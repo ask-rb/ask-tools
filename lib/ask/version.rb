@@ -2,6 +2,6 @@
 
 module Ask
   module Tools
-    VERSION = "0.2.6"
+    VERSION = "0.4.0"
   end
 end

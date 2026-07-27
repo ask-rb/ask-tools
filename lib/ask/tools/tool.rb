@@ -20,6 +20,7 @@ module Ask
         subclass.instance_variable_set(:@description, nil)
         subclass.instance_variable_set(:@parameters, {})
         subclass.instance_variable_set(:@params_schema_definition, nil)
+        subclass.instance_variable_set(:@tool_name, nil)
       end
 
       def description(text = nil)
@@ -27,6 +28,18 @@ module Ask
         @description = text
       end
       alias desc description
+
+      # Declare a custom tool name.
+      # Called with no argument returns the class name (via Module#name).
+      # Called with a string stores a custom name for the instance.
+      # Example: name "my_custom_tool"
+      def name(custom = :_no_arg_given)
+        if custom == :_no_arg_given
+          super()  # Module#name, returns the Ruby class path
+        else
+          @tool_name = custom
+        end
+      end
 
       def param(name, type:, desc: nil, description: nil, required: true)
         type = type.to_s.downcase.to_sym
@@ -115,6 +128,9 @@ module Ask
     end
 
     def name
+      custom = self.class.instance_variable_get(:@tool_name)
+      return custom if custom
+
       klass_name = self.class.name.to_s.split("::").last || ""
       normalized = klass_name.dup.force_encoding("UTF-8").unicode_normalize(:nfkd)
       normalized.encode("ASCII", replace: "")
