@@ -1,21 +1,13 @@
 # ask-tools
 
-The foundational gem for the ask-rb ecosystem. Defines `Ask::Tool` — the base class every tool inherits from — along with `Ask::Result` (standardized return value), tool discovery/registration, and a scaffold generator.
+[![Gem Version](https://badge.fury.io/rb/ask-tools.svg)](https://badge.fury.io/rb/ask-tools)
 
-This gem does **not** ship any executable tools. It only provides the contract that tool gems (e.g., `ask-tools-shell`, `ask-tools-filesystem`) implement.
+The tool framework for the ask-rb ecosystem. Defines `Ask::Tool` (the base class every tool inherits from), `Ask::Result` (standardized return value), and the `Ask::Tools` registry. This gem ships no executable tools; tool gems such as ask-tools-shell implement them.
 
 ## Installation
 
-Add this line to your `Gemfile`:
-
 ```ruby
 gem "ask-tools"
-```
-
-Or install it directly:
-
-```bash
-gem install ask-tools
 ```
 
 ## Quick Start
@@ -32,174 +24,60 @@ class Greeter < Ask::Tool
   end
 end
 
-# Use it
-tool = Greeter.new
-tool.name          # => "greeter"
-tool.description   # => "Greets a person by name"
-
-result = tool.call(name: "World")
-result.ok?         # => true
-result.output      # => "Hello, World!"
+result = Greeter.new.call(name: "World")
+result.ok?      # => true
+result.output   # => "Hello, World!"
 ```
 
-## API Reference
+## Essential API
 
-### `Ask::Tool` — Base Class
+### Ask::Tool
 
-Subclass `Ask::Tool` to define a tool that an LLM can call.
+| Method | Purpose |
+|---|---|
+| `description "..."` (alias `desc`) | Set the tool description |
+| `param :name, type: :string, desc: "...", required: true` | Declare a parameter. `type` must be a JSON Schema type (`:string`, `:integer`, `:number`, `:boolean`, `:array`, `:object`) |
+| `name "custom_tool"` | Set a custom tool name (default: derived from the class name, CamelCase to snake_case, `_tool` suffix stripped) |
+| `params do ... end` | Declare parameters with the ask-schema DSL |
 
-#### Class DSL
+Override `execute(**args)` with the tool logic. `call(args)` normalizes input (JSON strings and hash keys), validates required parameters, and returns an `Ask::Result`. Raising `Ask::Tool::Halt` inside `execute` yields a success result with `metadata[:halted] = true`; any other exception becomes a failure result.
 
-| Method | Description |
-|--------|-------------|
-| `description(text)` | Sets or retrieves the tool's human-readable description. Alias: `desc` |
-| `param(name, type:, desc:, required:)` | Declares a parameter. `type` must be a valid JSON Schema type (`:string`, `:integer`, `:number`, `:boolean`, `:array`, `:object`) |
-
-#### Instance Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `name` | `String` | Auto-derived from the class name: CamelCase → snake_case, strips `_tool` suffix |
-| `description` | `String?, nil` | The tool's description |
-| `parameters` | `Hash{Symbol => Parameter}` | Declared parameter definitions |
-| `call(args = {})` | `Ask::Result` | Normalizes args (symbolizes keys), validates required params, delegates to `execute`. Catches `Halt` and `StandardError` |
-| `execute(**args)` | `Ask::Result` | **Override this.** Implement the tool's logic. |
-| `params_schema` | `Hash?, nil` | JSON Schema hash for LLM function-calling APIs. Returns `nil` when no params declared |
-| `tool_definition` | `Hash` | Full tool definition hash with `:name`, `:description`, and `:input_schema` |
-
-#### Error Handling
-
-- **`Ask::Tool::Halt`** — Raise this inside `execute` to signal the conversation loop should stop after this tool's result. `call` returns an `Ask::Result` with `metadata[:halted] = true`.
-- **`StandardError`** — Any other exception raised in `execute` is caught by `call` and returned as an error `Ask::Result`.
-
-### `Ask::Result` — Return Value
-
-A value object representing the outcome of a tool execution.
-
-#### Factory Methods
+### Ask::Result
 
 ```ruby
-# Successful result
 Ask::Result.ok(data: "output", metadata: { key: "val" })
-
-# Failed result
 Ask::Result.error(message: "Something went wrong", metadata: { code: 500 })
+Ask::Result.failure("Something went wrong")
+
+result.ok?       # => true
+result.output    # => "output"
+result.error     # => nil
+result.metadata  # => { key: "val" }
+result.to_s      # => "output"
+result.to_h      # => { ok: true, output: "output", error: nil, metadata: { key: "val" } }
 ```
 
-#### Attributes
+### Ask::Tools registry
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `ok?` / `ok` | `Boolean` | Whether the tool completed successfully |
-| `output` | `Object?, nil` | Output data (success) |
-| `error` | `String?, nil` | Error message (failure) |
-| `metadata` | `Hash` | Arbitrary metadata |
+| Method | Purpose |
+|---|---|
+| `Ask::Tools.register(ToolClass)` | Register a tool class manually |
+| `Ask::Tools.all` | Instances of all registered tools |
+| `Ask::Tools.discover` | Auto-register loaded `Ask::Tool` subclasses via ObjectSpace |
+| `Ask::Tools["name"]` | Find a tool instance by derived name |
+| `Ask::Tools.clear` / `Ask::Tools.count` | Reset and count the registry |
 
-#### Instance Methods
+## Full documentation
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `to_s` | `String` | Returns `output.to_s` for success, `error` for failure |
-| `to_h` | `Hash` | Serialized hash with `:ok`, `:output`, `:error`, `:metadata` |
-| `inspect` | `String` | Human-readable representation |
-
-### `Ask::Tool::Parameter` — Parameter Definition
-
-Internal value object describing a declared parameter. Accessible via `Tool.parameters[name]`.
-
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `name` | `Symbol` | Parameter name |
-| `type` | `String` | JSON Schema type string |
-| `description` | `String?, nil` | Human-readable description |
-| `required` / `required?` | `Boolean` | Whether the parameter is mandatory |
-
-### `Ask::Tools` — Registry & Discovery
-
-Central registry for tool classes.
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `.register(tool_class)` | `void` | Manually register a tool class |
-| `.all` | `Array<Tool>` | Instantiated list of all registered tools |
-| `.discover` | `Array<Class>` | Auto-discover loaded `Ask::Tool` subclasses via `ObjectSpace` |
-| `.[](name)` | `Tool?, nil` | Find a registered tool by its derived name |
-| `.clear` | `void` | Remove all registered tools |
-| `.count` | `Integer` | Number of registered tool classes |
-
-```ruby
-# Manual registration
-Ask::Tools.register(MyTool)
-
-# Auto-discover all loaded Ask::Tool subclasses
-Ask::Tools.discover
-
-# Find by name
-tool = Ask::Tools["my_tool"]
-tool.call(input: "hello")
-
-# List all
-Ask::Tools.all.each { |t| puts t.name }
-```
-
-## Defining a Custom Tool
-
-```ruby
-class SearchTool < Ask::Tool
-  description "Searches a knowledge base"
-  param :query, type: :string, desc: "Search query", required: true
-  param :limit, type: :integer, desc: "Max results", required: false
-
-  def execute(query:, limit: 10)
-    results = perform_search(query, limit)
-    Ask::Result.ok(data: results)
-  rescue SearchError => e
-    Ask::Result.error(message: e.message)
-  end
-
-  private
-
-  def perform_search(query, limit)
-    # ... implementation
-  end
-end
-```
+The full ask-rb documentation lives at https://ask-rb.github.io/ask-docs. [ask-tools in depth](https://ask-rb.github.io/ask-docs/core/tools) covers the tool contract, parameter schemas, and custom tool examples. API reference: https://ask-rb.github.io/ask-docs/reference/api.
 
 ## Development
 
-```bash
-# Install dependencies
+```
 bundle install
-
-# Run tests
-bundle exec rake test
-
-# Build the gem
-gem build ask-tools.gemspec
-```
-
-## Testing
-
-ask-tools uses **Minitest** with **Mocha** for mocking.
-
-```bash
-# Run the full test suite
 bundle exec rake test
 ```
-
-## Release Process
-
-1. Update `CHANGELOG.md`
-2. Update `lib/ask/version.rb` if needed
-3. Build the gem: `gem build ask-tools.gemspec`
-4. Push to GitHub Packages: `gem push ask-tools-*.gem`
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
-
-## Links
-
-- **Source:** https://github.com/ask-rb/ask-tools
-- **Issues:** https://github.com/ask-rb/ask-tools/issues
-- **Docs:** https://github.com/ask-rb/ask-docs
+MIT
