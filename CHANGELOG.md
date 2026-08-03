@@ -1,3 +1,27 @@
+## [0.5.0] — 2026-08-03
+
+### Changed
+
+- **`Ask::Result` now comes from ask-core.** The duplicated `Ask::Result`
+  definition in this gem is removed; ask-tools depends on ask-core
+  (>= 0.9.0), which owns the single result type for the whole ecosystem with
+  both the foundational API (`success`/`failure`/`aborted`/`blocked`) and the
+  tool API (`ok`/`error`/`output`/`ok?`/`error_message`). Previously the two
+  gems' incompatible constructors meant whichever loaded last broke the
+  other's factories (`Ask::Result.success` raised `ArgumentError` in any app
+  loading both).
+
+  The tool API is unchanged:
+
+  ```ruby
+  Ask::Result.ok(data: "hello").output    # => "hello"
+  Ask::Result.error(message: "fail").error  # => "fail"
+  ```
+
+### Tested
+
+- 71 tests, 159 assertions, 0 failures.
+
 ## [0.4.0] — 2026-07-26
 
 ### Added

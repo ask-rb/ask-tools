@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.email = ["kaka@myrrlabs.com"]
 
   spec.summary = "Tool framework for the ask-rb ecosystem"
-  spec.description = "Defines Ask::Tool (base class), Ask::Result, and tool discovery."
+  spec.description = "Defines Ask::Tool (base class), tool discovery, and the Ask::Result returned by tools."
 
   spec.homepage = "https://github.com/ask-rb/ask-tools"
   spec.license = "MIT"
@@ -21,6 +21,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "ask-core", ">= 0.9.0"
   spec.add_dependency "ask-schema", ">= 0.1"
 
   spec.add_development_dependency "minitest", "~> 5.25"

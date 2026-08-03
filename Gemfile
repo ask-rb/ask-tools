@@ -2,6 +2,8 @@ source "https://rubygems.org"
 
 gemspec
 
+gem "ask-core", path: "../ask-core"
+
 gem "ask-schema"
 
 # gem "ask-schema", path: "../ask-schema"

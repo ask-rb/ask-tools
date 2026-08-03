@@ -2,7 +2,7 @@
 
 require_relative "ask/version"
 require_relative "ask/tools"
-require_relative "ask/tools/result"
+require "ask"  # ask-core: the shared Ask::Result lives here
 require_relative "ask/tools/tool"
 
 module Ask
