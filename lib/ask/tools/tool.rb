@@ -21,6 +21,8 @@ module Ask
         subclass.instance_variable_set(:@parameters, {})
         subclass.instance_variable_set(:@params_schema_definition, nil)
         subclass.instance_variable_set(:@tool_name, nil)
+        subclass.instance_variable_set(:@approval_required, nil)
+        subclass.instance_variable_set(:@auto_approvable, nil)
       end
 
       def description(text = nil)
@@ -38,6 +40,49 @@ module Ask
           super()  # Module#name, returns the Ruby class path
         else
           @tool_name = custom
+        end
+      end
+
+      # Declare that calling this tool requires human approval.
+      #
+      # The tool is still registered and described to the LLM normally, but
+      # when an agent session runs with an approval queue enabled, calls to
+      # it are queued instead of executed — the agent gets a pending result,
+      # and the tool only runs after a human approves it.
+      #
+      # Called with no argument returns the current value (default false).
+      #
+      # @example
+      #   class SendEmail < Ask::Tool
+      #     approval_required true
+      #     def execute(to:, body:) ... end
+      #   end
+      #
+      # @param value [Boolean, nil]
+      # @return [Boolean]
+      def approval_required(value = :_no_arg_given)
+        if value == :_no_arg_given
+          @approval_required == true
+        else
+          @approval_required = !!value
+        end
+      end
+
+      # Declare that this tool may be auto-approved when the session's
+      # approval policy has auto-approval enabled for it. This is a
+      # per-action verdict only — the session-level user rule is still the
+      # binding gate. A tool that requires approval but is NOT marked
+      # auto-approvable always queues for human review.
+      #
+      # Called with no argument returns the current value (default false).
+      #
+      # @param value [Boolean, nil]
+      # @return [Boolean]
+      def auto_approvable(value = :_no_arg_given)
+        if value == :_no_arg_given
+          @auto_approvable == true
+        else
+          @auto_approvable = !!value
         end
       end
 
@@ -147,6 +192,17 @@ module Ask
 
     def parameters
       self.class.parameters
+    end
+
+    # @return [Boolean] whether calling this tool requires human approval
+    def approval_required?
+      self.class.approval_required
+    end
+
+    # @return [Boolean] whether this tool may be auto-approved under a
+    #   session-level auto-approval rule
+    def auto_approvable?
+      self.class.auto_approvable
     end
 
       def call(args = {}, abort_controller = nil)

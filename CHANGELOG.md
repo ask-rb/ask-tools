@@ -1,3 +1,35 @@
+## [0.6.0] — 2026-08-06
+
+### Added
+
+- **`Ask::Tool.approval_required` — declare that a tool needs human approval.**
+  Combined with `Ask::Agent::ApprovalQueue` (ask-agent), calls to the tool are
+  queued instead of executed — the agent gets a pending result and continues,
+  and the tool only runs after a human approves it. Defaults to false; the
+  flag is not inherited by subclasses.
+
+  ```ruby
+  class SendEmail < Ask::Tool
+    approval_required true
+    def execute(to:, body:) ... end
+  end
+  ```
+
+- **`Ask::Tool.auto_approvable` — declare that a tool may be auto-approved.**
+  A per-action verdict only: the session's user-enabled rule is still the
+  binding gate (dual signal). A tool that requires approval but is NOT marked
+  auto-approvable always queues for human review.
+
+  ```ruby
+  class Ping < Ask::Tool
+    approval_required true
+    auto_approvable true
+    def execute ... end
+  end
+  ```
+
+- Instance predicates `#approval_required?` and `#auto_approvable?`.
+
 ## [0.5.0] — 2026-08-03
 
 ### Changed
