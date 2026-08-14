@@ -124,4 +124,21 @@ class ToolSchemaTest < Minitest::Test
     message = tool.validate(cmd: "ls", typo: "ls")
     assert_match(%r{unknown parameters: "typo" — expected: "cmd"}, message)
   end
+class BlockSchemaTool < Ask::Tool
+    description "Block-declared params"
+    params do
+      string :project_id
+      string :title
+    end
+    def execute(project_id:, title:)
+      "ok"
+    end
+  end
+
+  def test_schema_validation_accepts_valid_calls_for_block_schemas
+    # Block-form schemas carry required as symbols; validation must not
+    # reject valid calls because of the key style.
+    tool = BlockSchemaTool.new
+    assert_nil tool.validate(project_id: "p1", title: "ok")
+  end
 end

@@ -292,7 +292,7 @@ module Ask
 
     def validate_against_schema(normalized)
       schema = params_schema || {}
-      expected = Array(schema["required"])
+      expected = Array(schema["required"]).map(&:to_s) # block-form schemas carry symbols here
       missing = expected - normalized.keys.map(&:to_s)
       return "missing required parameters: #{missing.map(&:inspect).join(', ')} — expected: #{expected.map(&:inspect).join(', ')}" unless missing.empty?
 
