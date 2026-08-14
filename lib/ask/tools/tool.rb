@@ -99,8 +99,32 @@ module Ask
         @params_schema_definition = schema || block
       end
 
+      # The tool's declared parameters — or, when none are declared,
+      # inferred from the execute signature so a tool is never silently
+      # uncallable: a tool whose execute takes keyword arguments but
+      # declares no params would otherwise reject every call ("unknown
+      # parameters"). Inference is a fallback, never an override: an
+      # explicit `params`/`param` declaration wins.
       def parameters
         @parameters ||= {}
+        if @parameters.empty? && @params_schema_definition.nil? && !@parameters_inferred
+          infer_parameters_from_execute
+        end
+        @parameters
+      end
+
+      # Derive parameters from `def execute(project_id:, title:, ...)`:
+      # required keywords become required string parameters. Ruby types
+      # aren't introspectable, so everything infers as string (JSON
+      # numbers coerce); tools that need real types declare `params`.
+      def infer_parameters_from_execute
+        @parameters_inferred = true
+        instance_method(:execute).parameters.each do |kind, name|
+          next unless %i[keyreq key opt].include?(kind)
+          next if name.nil? || name == :_abort_controller
+
+          @parameters[name] = Parameter.new(name: name, type: "string", required: kind == :keyreq)
+        end
       end
 
       def provider_params
@@ -111,7 +135,7 @@ module Ask
         @params_schema ||= begin
           if @params_schema_definition
             deep_stringify_keys(resolve_params_schema(@params_schema_definition))
-          elsif @parameters && @parameters.any?
+          elsif parameters.any?
             build_schema_from_params
           else
             nil
@@ -245,7 +269,41 @@ module Ask
       "#<#{self.class.name} name=#{name.inspect}>"
     end
 
+    # Validate normalized (symbol-keyed) arguments. Returns nil when
+    # valid, or an actionable message — one that names what was expected
+    # — so the model (or a repair pass) can correct the call instead of
+    # guessing. Public: ask-agent's tool-call repair validates through
+    # this. Tools with a declared `params` block validate against the
+    # resolved schema (required keys + unknown keys when strict).
+    def validate(normalized)
+      return validate_against_schema(normalized) if params_schema_definition
+
+      expected = self.class.parameters.keys
+      missing = expected.select { |name| self.class.parameters[name].required && !normalized.key?(name) }
+      return "missing required parameters: #{missing.map(&:inspect).join(', ')} — expected: #{expected.map(&:inspect).join(', ')}" unless missing.empty?
+
+      unknown = normalized.keys - expected
+      return "unknown parameters: #{unknown.map(&:inspect).join(', ')} — expected: #{expected.map(&:inspect).join(', ')}" unless unknown.empty?
+
+      nil
+    end
+
     private
+
+    def validate_against_schema(normalized)
+      schema = params_schema || {}
+      expected = Array(schema["required"])
+      missing = expected - normalized.keys.map(&:to_s)
+      return "missing required parameters: #{missing.map(&:inspect).join(', ')} — expected: #{expected.map(&:inspect).join(', ')}" unless missing.empty?
+
+      properties = schema["properties"] || {}
+      if schema["additionalProperties"] == false
+        unknown = normalized.keys.map(&:to_s) - properties.keys
+        return "unknown parameters: #{unknown.map(&:inspect).join(', ')} — expected: #{properties.keys.map(&:inspect).join(', ')}" unless unknown.empty?
+      end
+
+      nil
+    end
 
     def params_schema_definition
       self.class.instance_variable_get(:@params_schema_definition)
@@ -292,15 +350,6 @@ module Ask
       end
 
       args.respond_to?(:transform_keys) ? args.transform_keys(&:to_sym) : {}
-    end
-
-    def validate(normalized)
-      return nil if params_schema_definition
-      missing = self.class.parameters.select { |_, p| p.required && !normalized.key?(p.name) }
-      return "missing required parameters: #{missing.keys.map(&:inspect).join(', ')}" unless missing.empty?
-      unknown = normalized.keys - self.class.parameters.keys
-      return "unknown parameters: #{unknown.map(&:inspect).join(', ')}" unless unknown.empty?
-      nil
     end
 
     VALID_JSON_SCHEMA_TYPES = %i[string integer number boolean array object].freeze

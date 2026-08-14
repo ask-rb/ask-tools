@@ -15,7 +15,7 @@ class ToolSchemaTest < Minitest::Test
 
   class ToolWithHashSchema < Ask::Tool
     description "A tool with hash schema"
-    params(type: "object", properties: { cmd: { type: "string" } }, required: ["cmd"])
+    params(type: "object", properties: { cmd: { type: "string" } }, required: ["cmd"], additionalProperties: false)
 
     def execute(cmd:)
       "ran: #{cmd}"
@@ -88,5 +88,40 @@ class ToolSchemaTest < Minitest::Test
     # Nested test classes get compound names; this is expected behavior.
     name = ToolWithParams.new.name
     assert name.include?("tool_with_params"), "expected name to include tool_with_params, got #{name}"
+  end
+# The real-model bug: a tool whose execute takes kwargs but declares
+  # no params was uncallable ("unknown parameters" for every argument).
+  # The schema is now inferred from the signature, and validation names
+  # what was expected so the model can correct the call.
+  class ImplicitTool < Ask::Tool
+    description "Implicit params from the execute signature"
+    def execute(project_id:, title:, stage: nil)
+      "ok"
+    end
+  end
+
+  def test_parameters_are_inferred_from_the_execute_signature
+    schema = ImplicitTool.new.tool_definition[:input_schema]
+    assert_equal %w[project_id title], schema[:required],
+      "required kwargs become required schema properties"
+    assert_equal %w[project_id stage title], schema[:properties].keys.sort,
+      "optional kwargs become optional properties"
+  end
+
+  def test_validation_names_what_was_expected
+    tool = ImplicitTool.new
+    message = tool.validate(project_id: "p1", title: "ok", titile: "typo")
+    assert_match(/unknown parameters: :titile/, message)
+    assert_match(/expected: :project_id, :title, :stage/, message,
+      "the error is actionable — the model repairs instead of guessing")
+    assert_nil tool.validate(project_id: "p1", title: "ok", stage: "Backlog")
+  end
+
+  def test_schema_validation_applies_to_declared_params_blocks
+    tool = ToolWithHashSchema.new
+    message = tool.validate(cmd: "ls")
+    assert_nil message
+    message = tool.validate(cmd: "ls", typo: "ls")
+    assert_match(%r{unknown parameters: "typo" — expected: "cmd"}, message)
   end
 end
