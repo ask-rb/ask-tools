@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "ask-core", ">= 0.9.0"
-  spec.add_dependency "ask-schema", ">= 0.1"
+  spec.add_dependency "ask-schema", ">= 0.1.2"
 
   spec.add_development_dependency "minitest", "~> 5.25"
   spec.add_development_dependency "mocha", "~> 3.1"
