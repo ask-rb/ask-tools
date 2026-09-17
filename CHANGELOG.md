@@ -1,3 +1,11 @@
+## [0.6.5] — 2026-09-18
+
+### Changed
+
+- Requires `ask-core >= 0.12.0` for the decision vocabulary
+  (`Ask::Decision`, `Ask::DecisionProvider`, `Ask::DecisionResult`).
+  Nothing else changed.
+
 ## [0.6.0] — 2026-08-06
 
 ### Added
