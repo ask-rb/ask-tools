@@ -86,12 +86,12 @@ module Ask
         end
       end
 
-      def param(name, type:, desc: nil, description: nil, required: true)
+      def param(name, type:, desc: nil, description: nil, required: true, enum: nil)
         type = type.to_s.downcase.to_sym
         validate_param_type!(type, name)
         parameters[name] = Parameter.new(
           name: name, type: map_type(type),
-          description: desc || description, required: required
+          description: desc || description, required: required, enum: enum
         )
       end
 
@@ -148,6 +148,7 @@ module Ask
           schema = { type: param.type }
           schema[:description] = param.description if param.description
           schema[:items] = { type: "string" } if param.type == "array"
+          schema[:enum] = param.enum if param.enum
           [param.name.to_s, schema]
         end
         required = parameters.select { |_, p| p.required }.keys.map(&:to_s)
@@ -355,13 +356,16 @@ module Ask
     VALID_JSON_SCHEMA_TYPES = %i[string integer number boolean array object].freeze
 
     class Parameter
-      attr_reader :name, :type, :description, :required
+      attr_reader :name, :type, :description, :required, :enum
       alias required? required
-      def initialize(name:, type:, description: nil, required: true)
+      def initialize(name:, type:, description: nil, required: true, enum: nil)
         @name = name; @type = type; @description = description; @required = required
+        @enum = enum&.freeze
       end
       def to_h
-        { name: name, type: type, description: description, required: required }
+        h = { name: name, type: type, description: description, required: required }
+        h[:enum] = enum if enum
+        h
       end
     end
   end
